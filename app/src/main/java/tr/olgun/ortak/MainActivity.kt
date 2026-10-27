@@ -80,6 +80,23 @@ class MainActivity : Activity() {
   val ip=lp.linkAddresses.mapNotNull{it.address as? Inet4Address}.firstOrNull{!it.isLoopbackAddress} ?: return null
   return ip.hostAddress
  }
+ private fun brandModel(name:String):String {
+  val s=name.lowercase()
+  val known=listOf(
+   "samsung" to "Samsung", "galaxy" to "Samsung Galaxy",
+   "iphone" to "Apple iPhone", "ipad" to "Apple iPad",
+   "macbook" to "Apple MacBook", "imac" to "Apple iMac",
+   "pixel" to "Google Pixel", "redmi" to "Xiaomi Redmi",
+   "xiaomi" to "Xiaomi", "huawei" to "Huawei",
+   "honor" to "Honor", "oneplus" to "OnePlus",
+   "lenovo" to "Lenovo", "thinkpad" to "Lenovo ThinkPad",
+   "dell" to "Dell", "latitude" to "Dell Latitude",
+   "hp-" to "HP", "asus" to "ASUS", "acer" to "Acer",
+   "bravia" to "Sony BRAVIA", "chromecast" to "Google Chromecast",
+   "roku" to "Roku", "lg-" to "LG"
+  )
+  return known.firstOrNull{s.contains(it.first)}?.second ?: "Belirlenemedi"
+ }
  private fun guess(name:String):String {
   val s=name.lowercase()
   return when {
@@ -123,10 +140,8 @@ class MainActivity : Activity() {
          count++
          val item=card()
          add(item,text(name,17f,true))
-         add(item,text("Cihaz türü: "+guess(name),13f,false,red))
          add(item,text("IP adresi: $target",13f))
-         add(item,text("Kullanıcı adı: Bilinmiyor",13f,false,gray))
-         add(item,text("MAC adresi: Alınamadı",13f,false,gray))
+         add(item,text("Marka / Model: "+brandModel(name),13f,false,gray))
          add(devices,item,8)
          status.text="Bağlı ağ: $ip · Bulunan cihaz: $count"
         }
