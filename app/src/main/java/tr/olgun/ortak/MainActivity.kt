@@ -8,6 +8,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
+import java.nio.ByteOrder
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -73,12 +75,28 @@ class MainActivity : Activity() {
  }
  private fun connectedNetwork():String? {
   val cm=getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-  val net=cm.activeNetwork ?: return null
-  val caps=cm.getNetworkCapabilities(net) ?: return null
-  if(!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))return null
-  val lp=cm.getLinkProperties(net) ?: return null
-  val ip=lp.linkAddresses.mapNotNull{it.address as? Inet4Address}.firstOrNull{!it.isLoopbackAddress} ?: return null
-  return ip.hostAddress
+  // activeNetwork can be cellular when Wi-Fi has no validated Internet access.
+  // Inspect every available Wi-Fi transport instead.
+  val candidates=listOfNotNull(cm.activeNetwork)+cm.allNetworks.toList()
+  for(net in candidates.distinct()){
+   val caps=cm.getNetworkCapabilities(net) ?: continue
+   if(!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))continue
+   val lp=cm.getLinkProperties(net) ?: continue
+   val ip=lp.linkAddresses.mapNotNull{it.address as? Inet4Address}
+    .firstOrNull{!it.isLoopbackAddress && !it.isLinkLocalAddress}
+   if(ip!=null)return ip.hostAddress
+  }
+  // Older devices: DHCP IPv4 is still available when cellular is the default route.
+  val wm=applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+  if(wm.isWifiEnabled){
+   @Suppress("DEPRECATION") val raw=wm.dhcpInfo?.ipAddress ?: 0
+   if(raw!=0){
+    val bytes=byteArrayOf((raw and 255).toByte(),((raw ushr 8) and 255).toByte(),
+     ((raw ushr 16) and 255).toByte(),((raw ushr 24) and 255).toByte())
+    return InetAddress.getByAddress(bytes).hostAddress
+   }
+  }
+  return null
  }
  private fun brandModel(name:String):String {
   val s=name.lowercase()
@@ -120,7 +138,7 @@ class MainActivity : Activity() {
   if(refreshing)return
   val ip=connectedNetwork()
   devices.removeAllViews();count=0
-  if(ip==null){status.text="Wi-Fi ağına bağlanın. Mobil veri üzerinden tarama yapılmaz.";return}
+  if(ip==null){status.text="Wi-Fi bağlantısı veya yerel IP adresi bulunamadı. Wi-Fi bağlantısını kontrol edip aşağı çekerek yeniden deneyin.";return}
   val prefix=ip.substringBeforeLast('.',"")
   if(prefix.isEmpty()){status.text="IPv4 adresi okunamadı";return}
   refreshing=true
