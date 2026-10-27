@@ -141,7 +141,6 @@ class MainActivity : Activity() {
          val item=card()
          add(item,text(name,17f,true))
          add(item,text("IP adresi: $target",13f))
-         add(item,text("Marka / Model: "+brandModel(name),13f,false,gray))
          add(devices,item,8)
          status.text="Bağlı ağ: $ip · Bulunan cihaz: $count"
         }
